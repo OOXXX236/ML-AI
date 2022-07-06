@@ -1,5 +1,6 @@
 
 from PIL.Image import core as _imaging
+from cv2 import imshow
 from sklearn import svm
 import sklearn.model_selection as model_selection
 from sklearn.metrics import accuracy_score
@@ -27,7 +28,7 @@ def compareToMaxRGBToDelta(Mc,N):
     return Re
 
 def chDim(img):
-    dim = (30 , 30)
+    dim = (40 , 40)
     resized = cv2.resize(img, dim, interpolation = cv2.INTER_AREA)
     return resized
 
@@ -75,18 +76,18 @@ imgList = os.listdir(imgPath)
 posLabelList = os.listdir(posLabelPath)
 
 for i in range(len(imgList)):
-    image = cv2.imread(imgPath+"\\"+imgList[i],1)
+    image = cv2.imread(imgPath+"\\"+imgList[i])
     img = np.asarray(image)
     f = open(posLabelPath+"\\"+posLabelList[i])
     lines = f.readlines()
     for line in lines:
         posLabel = np.array([np.float(i) for i in line.strip().split()])
-        startX = int(image.shape[0]*(posLabel[2]-1*posLabel[-1]))
-        startY = int(image.shape[1]*(posLabel[1]-1*posLabel[-2]))
-        EndX = int(image.shape[0]*(posLabel[2]+ 1*posLabel[-1]))
-        EndY = int(image.shape[1]*(posLabel[1]+ 1*posLabel[-2]))
+        startX = int(image.shape[0]*(posLabel[2]-0.5*posLabel[-1]))
+        startY = int(image.shape[1]*(posLabel[1]-0.5*posLabel[-2]))
+        EndX = int(image.shape[0]*(posLabel[2]+ 0.5*posLabel[-1]))
+        EndY = int(image.shape[1]*(posLabel[1]+ 0.5*posLabel[-2]))
         if(len(Xtrain[int(posLabel[0])])<400):
-            Xtrain[int(posLabel[0])].append(chDim(img[startX:EndX, startY:EndY,:]))
+            Xtrain[int(posLabel[0])].append(chDim(img[startX:EndX, startY:EndY,::-1]))
         
     f.close
 print("Xtrain Size :", len(Xtrain[0]),len(Xtrain[1]),len(Xtrain[2]),len(Xtrain[3]))
@@ -114,9 +115,9 @@ for i in Xtrain[2]:
 for i in Xtrain[3]:
     Mc4+=i
 Mc1=Mc1/len(Xtrain[0])
-Mc2=Mc1/len(Xtrain[1])
-Mc3=Mc1/len(Xtrain[2])
-Mc4=Mc1/len(Xtrain[3])
+Mc2=Mc2/len(Xtrain[1])
+Mc3=Mc3/len(Xtrain[2])
+Mc4=Mc4/len(Xtrain[3])
 LMc = np.array([Mc1,Mc2,Mc3,Mc4])
 XFeaturesTrain = listDataTransFeature(mX,LMc)
 
@@ -133,21 +134,21 @@ for i in range(len(Xtrain[0])):
     else :
         image = np.hstack((image, Xtrain[0][i]))
 """
+
 imageShow("Class1",0,Xtrain)
+imageShow("Class test 1",0,[XFeaturesTrain[:400]])
 imageShow("Class2",1,Xtrain)
+imageShow("Class test 1",0,[XFeaturesTrain[400:800]])
 imageShow("Class3",2,Xtrain)
+imageShow("Class test 1",0,[XFeaturesTrain[800:1200]])
 imageShow("Class4",3,Xtrain)
- 
+imageShow("Class test 1",0,[XFeaturesTrain[1200:1600]])
 
 # numpy_vertical = np.vstack((image, grey_3_channel))
 # numpy_horizontal = np.hstack((image, grey_3_channel))
 
-
 XFeaturesTrain =  np.squeeze(np.array([np.reshape(XFeaturesTrain[i,:,:],(1,-1)) for i in range(XFeaturesTrain.shape[0])]))
-print(XFeaturesTrain.shape)
 
-# Train data use OvR SVM
-poly = svm.SVC(kernel='poly', degree=3, C=90).fit(XFeaturesTrain, my)
 
 
 # prepare test set
@@ -158,34 +159,33 @@ posLabelList = os.listdir(posLabelPath)
 mxTest=[]
 myTest=[]
 for i in range(len(imgList)):
-    image = cv2.imread(imgPath+"\\"+imgList[i],1)
+    image = cv2.imread(imgPath+"\\"+imgList[i])
     img = np.asarray(image)
     f = open(posLabelPath+"\\"+posLabelList[i])
     lines = f.readlines()
     for line in lines:
         posLabel = np.array([np.float(i) for i in line.strip().split()])
-        startX = int(image.shape[0]*(posLabel[2]-1*posLabel[-1]))
-        startY = int(image.shape[1]*(posLabel[1]-1*posLabel[-2]))
-        EndX = int(image.shape[0]*(posLabel[2]+1*posLabel[-1]))
-        EndY = int(image.shape[1]*(posLabel[1]+1*posLabel[-2]))
-        mxTest.append(chDim(img[startX:EndX, startY:EndY,:]))
+        startX = int(image.shape[0]*(posLabel[2]-0.5*posLabel[-1]))
+        startY = int(image.shape[1]*(posLabel[1]-0.5*posLabel[-2]))
+        EndX = int(image.shape[0]*(posLabel[2]+0.5*posLabel[-1]))
+        EndY = int(image.shape[1]*(posLabel[1]+0.5*posLabel[-2]))
+        mxTest.append(chDim(img[startX:EndX, startY:EndY,::-1]))
         myTest.append(int(posLabel[0]))
     f.close
-
-# evaluate accuracy
+#Train data use OvR SVM
+poly = svm.SVC(kernel='poly', degree=5, C=1).fit(XFeaturesTrain, my)
+ # evaluate accuracy
 mxTest = np.array(mxTest)
 myTest = np.array(myTest)
-print(mxTest.shape)
+
 
 XFeaturesTest = listDataTransFeature(mxTest,LMc)
 
+
 XFeaturesTest = np.squeeze(np.array([np.reshape(XFeaturesTest[i,:,:],(1,-1)) for i in range(XFeaturesTest.shape[0])]))
-print("XFeaturesTest : ",XFeaturesTest.shape)
 
 poly_pred = poly.predict(XFeaturesTest)
 
 poly_accuracy = accuracy_score(myTest, poly_pred)
-
 print('Accuracy (Polynomial Kernel): ', "%.2f" % (poly_accuracy*100))
-
 
