@@ -18,7 +18,7 @@ def compareToMaxRGBToDelta(Mc,N):
     Re = np.zeros_like(Mc[:,:,0])
     A1 = Dkl(Mc[:,:,0],N[:,:,0])
     A2 = Dkl(Mc[:,:,1],N[:,:,1])
-    A3 = Dkl(Mc[:,:,1],N[:,:,1])
+    A3 = Dkl(Mc[:,:,2],N[:,:,2])
     for i in range(Mc.shape[0]):
         for j in range(Mc.shape[1]):
             Re[i,j] = max([A1[i,j],A2[i,j],A3[i,j]])
@@ -27,7 +27,7 @@ def compareToMaxRGBToDelta(Mc,N):
     return Re
 
 def chDim(img):
-    dim = (30, 30)
+    dim = (30 , 30)
     resized = cv2.resize(img, dim, interpolation = cv2.INTER_AREA)
     return resized
 
@@ -48,6 +48,22 @@ def listDataTransFeature(mX,LMc):
         L.append(Re)
     return np.array(L)
 
+def imageShow(label,index,Xtrain):
+    images=[]
+    image = []
+    for i in range(len(Xtrain[index])):
+        if i%20 == 0:
+            if i==20:
+                images = image    
+            if i!=0 and i!=20:
+                images = np.vstack((images, image))
+            image=Xtrain[index][i]
+        else :
+            image = np.hstack((image, Xtrain[index][i]))
+    cv2.imshow(label,images)
+    cv2.waitKey(0)
+    
+    
 # get data and split to train data , there are 4 classes Font, Back, Left, Right
 #rf = Roboflow(api_key='NumKUmse6lxWaKXtxd2i',model_format='yolov5')
 #datasets = rf.workspace().project('face-direction').version('1').download(location="C:\\Users\\baw14\\OneDrive\\Desktop\\python\\ProjectAIS")
@@ -65,11 +81,11 @@ for i in range(len(imgList)):
     lines = f.readlines()
     for line in lines:
         posLabel = np.array([np.float(i) for i in line.strip().split()])
-        startX = int(image.shape[0]*(posLabel[2]-posLabel[-1]))
-        startY = int(image.shape[1]*(posLabel[1]-posLabel[-2]))
-        EndX = int(image.shape[0]*(posLabel[2]+posLabel[-1]))
-        EndY = int(image.shape[1]*(posLabel[1]+posLabel[-2]))
-        if(len(Xtrain[int(posLabel[0])])<=440):
+        startX = int(image.shape[0]*(posLabel[2]-1*posLabel[-1]))
+        startY = int(image.shape[1]*(posLabel[1]-1*posLabel[-2]))
+        EndX = int(image.shape[0]*(posLabel[2]+ 1*posLabel[-1]))
+        EndY = int(image.shape[1]*(posLabel[1]+ 1*posLabel[-2]))
+        if(len(Xtrain[int(posLabel[0])])<400):
             Xtrain[int(posLabel[0])].append(chDim(img[startX:EndX, startY:EndY,:]))
         
     f.close
@@ -85,6 +101,7 @@ my+=[0 for i in range(len(Xtrain[0]))]
 my+=[1 for i in range(len(Xtrain[1]))]
 my+=[2 for i in range(len(Xtrain[2]))]
 my+=[3 for i in range(len(Xtrain[3]))]
+
 
 # get average data of each classes called Mc (all data)
 Mc1 = Mc2 = Mc3= Mc4 = np.zeros_like(Xtrain[1][0])
@@ -103,12 +120,34 @@ Mc4=Mc1/len(Xtrain[3])
 LMc = np.array([Mc1,Mc2,Mc3,Mc4])
 XFeaturesTrain = listDataTransFeature(mX,LMc)
 
+"""
+for i in range(len(Xtrain[0])):
+    
+    
+    if i%20 == 0:
+        image=Xtrain[0][i]
+        if i==20:
+            images = images
+        if i!=0:
+            images = np.vstack((images, image))
+    else :
+        image = np.hstack((image, Xtrain[0][i]))
+"""
+imageShow("Class1",0,Xtrain)
+imageShow("Class2",1,Xtrain)
+imageShow("Class3",2,Xtrain)
+imageShow("Class4",3,Xtrain)
+ 
+
+# numpy_vertical = np.vstack((image, grey_3_channel))
+# numpy_horizontal = np.hstack((image, grey_3_channel))
+
 
 XFeaturesTrain =  np.squeeze(np.array([np.reshape(XFeaturesTrain[i,:,:],(1,-1)) for i in range(XFeaturesTrain.shape[0])]))
 print(XFeaturesTrain.shape)
 
 # Train data use OvR SVM
-poly = svm.SVC(kernel='poly', degree=7, C=60).fit(XFeaturesTrain, my)
+poly = svm.SVC(kernel='poly', degree=3, C=90).fit(XFeaturesTrain, my)
 
 
 # prepare test set
@@ -125,10 +164,10 @@ for i in range(len(imgList)):
     lines = f.readlines()
     for line in lines:
         posLabel = np.array([np.float(i) for i in line.strip().split()])
-        startX = int(image.shape[0]*(posLabel[2]-posLabel[-1]))
-        startY = int(image.shape[1]*(posLabel[1]-posLabel[-2]))
-        EndX = int(image.shape[0]*(posLabel[2]+posLabel[-1]))
-        EndY = int(image.shape[1]*(posLabel[1]+posLabel[-2]))
+        startX = int(image.shape[0]*(posLabel[2]-1*posLabel[-1]))
+        startY = int(image.shape[1]*(posLabel[1]-1*posLabel[-2]))
+        EndX = int(image.shape[0]*(posLabel[2]+1*posLabel[-1]))
+        EndY = int(image.shape[1]*(posLabel[1]+1*posLabel[-2]))
         mxTest.append(chDim(img[startX:EndX, startY:EndY,:]))
         myTest.append(int(posLabel[0]))
     f.close
