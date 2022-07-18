@@ -182,7 +182,7 @@ myTest = np.array(myTest)
 XFeaturesTest = listDataTransFeature(mxTest,LMc)
 
 
-XFeaturesTest = np.squeeze(np.array([np.reshape(XFeaturesTest[i,:,:],(1,-1)) for i in range(XFeaturesTest.shape[0])]))
+XFeaturesTest = np.squeeze(np.array([np.reshape(XFeaturesTest[i,:],(1,-1)) for i in range(XFeaturesTest.shape[0])]))
 
 poly_pred = poly.predict(XFeaturesTest)
 
